@@ -1,0 +1,205 @@
+variables
+providers - understands API interactions and exposing resources
+resource
+datasources - get the dynamic values and put it in a variable 
+output
+
+.tfvars - to define out variables
+
+once we run the tf file so it will generate the terraform.tfstate, terraform.tfstate.backup files
+terraform.tfstate - will know the version, tf version, modules.
+					it can be place/share with the other also.
+
+security group
+ingress, 
+egress
+terraform apply - is used to update the resources
+terraform destroy
+terraform plan
+terraform state
+
+---- variables ---- type: string, list, map.
+type:
+
+string - 
+	variable "string_name" {
+		type = "string"
+		default = "provide_value"
+	}
+	tags{
+		Name = "${var.string_name}"
+	}
+	
+list - 
+	variable "list_name" {
+		type = "list"
+		default = ["value1","value2"]
+	}
+	tags{
+		Name = "${var.list_name[0,1]}"
+	}
+map - 
+	variable "map_name" {
+		type = "map"
+		key1 = "value1"
+		key2 = "value2"
+	}
+	tags{
+		Name = "${var.map_name["key1","key2"]}"
+	}
+
+----------------- output -----------------
+This is to used to get the output of the resources values 
+Like example: instance id, dns name, public id, region, sg, cidr, arn, etc.
+
+	resource "aws_vpc" "myfirstvpc" {
+		cidr_block = "10.0.0.0/16"
+	}
+
+	output "VPCID" {
+		value = "${aws_vpc.myfirstvpc.id}"
+	}
+	
+----------------- create VPC --------------
+
+provider.tf 
+	provider "aws" {
+		access_key = ""
+		secret_key = ""
+		region = ""
+	}
+
+
+main.tf
+	resource "aws_vpc" "myfirstvpc"  {
+		cidr_block = "10.0.0.0/16"
+		
+	tags{
+		Name = "TerraformVPC"
+		Environment = "Testing"
+	}
+	
+	
+
+----------------- create EC2 --------------
+
+provider.tf 
+	provider "aws" {
+		access_key = ""
+		secret_key = ""
+		region = ""
+	}
+
+
+main.tf
+	resource "aws_instance" "myfirstEC2"  {
+		ami = "ami-id"
+		instance_type = "t2.micro"
+		
+	tags{
+		Name = "public_IP"
+		Environment = "Testing"
+	}
+	
+	resource "aws_eip" "elastic_ip" {
+		instance = "${aws_instance.myfirstEC2.id}"
+	}
+
+	output "public_IP" {
+		value = "{aws_instance.myfirstEC2.public_ip}"
+	}
+
+----------------- create Security Group --------------
+main.tf
+	resource "aws_instance" "myfirstEC2"  {
+		ami = "ami-id"
+		instance_type = "t2.micro"
+		security_group = "${aws_security_group.web_traffic.name}" 
+		
+	tags{
+		Name = "SG EC2"
+		Environment = "Testing"
+	}
+	
+	resource "aws_security_group" "web_traffic" {
+		
+		name = "Allow HTTPS"
+		
+		ingress{
+			from_port = "443"
+			to_port = "443"
+			protocol = "TCP"
+			cidr_block = "0.0.0.0/0"
+		}
+
+		egress{
+			from_port = "443"
+			to_port = "443"
+			protocol = "TCP"
+			cidr_block = "0.0.0.0/0"
+	}
+
+-------------------------- challenge --------------
+1. Create DB server and get an private IP address
+2. Create a web server and ensure it has a fixed public IP.
+3. Create a security_group for web server opening ports 80 and 443 (HTTP and HTTPS)
+4. Run the provided script on the web server
+	resource "aws_instance" "myfirstEC2"  {
+		ami = "ami-id"
+		instance_type = "t2.micro"
+		user_data = "${file(server-script.sh)}"
+---------------------------------------------------
+-------------------------- Modules -----------------
+Folders inside the folders
+This can be used for reusable code
+Modules are 2 types, local & remote
+
+ec2module is a main directory
+ec2 is a folder contains ec2.tf file 
+	ec2.tf
+		variable "ec2name"{
+			type = "string"
+		}
+		
+		resource "aws_instance" "moduleEC2" {
+		ami = "ami-id"
+		instance_type = "t2.micro"
+		
+		tags = {
+			Name = "${var.ec2name}"
+			}
+		}
+
+main.tf
+	resource "aws_aim_user" "mainuser" {
+		name = "Mainuser"
+	}
+	module "ec2module" {
+		source = "./ec2"
+		ec2name = "My first EC2 module"
+	}
+
+provider.tf 
+	provider "aws" {
+		access_key = ""
+		secret_key = ""
+		region = ""
+	}
+
+-------------- modules directory structure ----------
+modules-challenge
+	terraform
+	db
+		db.tf
+	web
+		web.tf
+		eip.tf
+		sg.tf
+		server-script.sh
+	main.tf
+	provider.tf
+	terraform.tfstate
+	terraform.tfstate.backup
+-----------------------------------------------------
+---------------------IAM Master Class ---------------
+How to create custom IAM policies
